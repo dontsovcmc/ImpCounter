@@ -128,6 +128,9 @@ volatile uint32_t wdt_count;
 
 /* Вектор прерываний сторожевого таймера watchdog */
 ISR( WDT_vect ) { 
+	wdt_reset();
+	WDTCR |= _BV(WDIE); 
+
 	++wdt_count;
 }  
 
@@ -191,18 +194,22 @@ void setup() {
 void loop() {
 	power_all_disable();  // Отключаем все лишнее: ADC, Timer 0 and 1, serial interface
 
-	set_sleep_mode( SLEEP_MODE_PWR_DOWN );  // Режим сна
+	set_sleep_mode( SLEEP_MODE_PWR_DOWN );
 
 	noInterrupts();
-	wdt_enable(WDTO_250MS); // разрешаем ватчдог 250 ms (WDE устанолен! необходимо устанавливать WDIE каждый раз!)
+
+	MCUSR = 0; // clear all interrupt flags
+    WDTCR = _BV( WDCE ) | _BV( WDE );
+	WDTCR = _BV( WDIE ) | _BV( WDE ) | _BV( WDP2 );
+	
 	interrupts(); 
 
 	wdt_count = 0;
 	
 	while ((wdt_count < wakeup_period) && !button.pressed())
-	{
-		counting();    // опрос счетчиков
-		sleep_mode();  // спим
+	{		
+		counting();
+		sleep_mode();
 	}
 		
 	wdt_disable();
